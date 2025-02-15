@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Tracer.Core;
@@ -9,13 +10,36 @@ using Tracer.Serialization.Abstractions;
 
 namespace Tracer.Serialization
 {
-    internal class TraceResultSerializer : ITraceResultSerializer
+    public class TraceResultSerializer
     {
-        string ITraceResultSerializer.Format => throw new NotImplementedException();
+        private readonly string _pluginPath;
 
-        void ITraceResultSerializer.Serialize(TraceResult traceResult, Stream to)
+        public TraceResultSerializer(string pluginPath)
         {
-            throw new NotImplementedException();
+            _pluginPath = pluginPath;
+        }
+
+        public IEnumerable<ITraceResultSerializer> LoadSerializers()
+        {
+            var serializerList = new List<ITraceResultSerializer>();
+            var dllFiles = Directory.GetFiles(_pluginPath, "*.dll");
+
+            foreach (var dll in dllFiles)
+            {
+                var assembly = Assembly.LoadFrom(dll);
+                try
+                {
+                    var types = assembly.GetTypes()
+                        .Where(t => typeof(ITraceResultSerializer).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+                    foreach (var type in types)
+                    {
+                        var serializer = (ITraceResultSerializer)Activator.CreateInstance(type);
+                        serializerList.Add(serializer);
+                    }
+                }
+                catch { }
+            }
+            return serializerList;
         }
     }
 }

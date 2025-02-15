@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Tracer.Core;
 using Tracer.Core.Abstractions;
+using Tracer.Serialization;
 
 namespace Tracer.Example
 {
@@ -16,7 +18,7 @@ namespace Tracer.Example
         {
             ITracer tracer = new Core.Tracer();
 
-            Thread[] threads = new Thread[5];
+            Thread[] threads = new Thread[3];
             for (int i = 0; i < threads.Length; i++)
             {
                 int threadIndex = i;
@@ -28,6 +30,18 @@ namespace Tracer.Example
 
             var traceResult = tracer.GetTraceResult();
             ShowResults(traceResult);
+
+
+            var pluginLoader = new TraceResultSerializer("D:\\Works\\6 semestr\\SPP\\Tracer\\Tracer\\Tracer.Serialization\\bin\\Debug");
+            var serializers = pluginLoader.LoadSerializers();
+
+            foreach (var serializer in serializers)
+            {
+                using (var stream = new FileStream($"Result\\result.{serializer.Format}", FileMode.Create))
+                {
+                    serializer.Serialize(traceResult, stream);
+                }
+            }
         }
 
         private static void threadFunc(int threadIndex, ITracer _tracer)
@@ -64,7 +78,7 @@ namespace Tracer.Example
             foreach(var methodResults in methodRes.Methods)
             { 
 
-                ShowMethodsResults(methodResults, ++nesting); 
+                ShowMethodsResults(methodResults, nesting + 1); 
             }
         }
     }
@@ -84,6 +98,7 @@ namespace Tracer.Example
         {
             _tracer.StartTrace();
             Thread.Sleep(200);
+            _bar.InnerMethod();
             _bar.InnerMethod();
             Thread.Sleep(500);
             _tracer.StopTrace();
