@@ -15,35 +15,28 @@ namespace Tracer.Core
     {
         private Dictionary<int, ThreadInfoResult> threadInfoResults;
         private Dictionary<int, Stack<Stopwatch>> stopwatches;
-        private static Mutex mutex;
+        private readonly object lockObject = new object();
         public Tracer()
         {
             threadInfoResults = new Dictionary<int, ThreadInfoResult>();
             stopwatches = new Dictionary<int, Stack<Stopwatch>>();
-            mutex = new Mutex();
         }
 
         public void StartTrace()
         {
-            mutex.WaitOne();
             int threadId = Thread.CurrentThread.ManagedThreadId;
-            if (!threadInfoResults.ContainsKey(threadId))
+            lock (lockObject)
             {
-                threadInfoResults[threadId] = new ThreadInfoResult
+                if (!threadInfoResults.ContainsKey(threadId))
                 {
-                    ThreadId = threadId,
-                    Time = 0,
-                    Methods = new List<MethodInfoResult>()
-                };
-                stopwatches[threadId] = new Stack<Stopwatch>();
-            }
-            mutex.ReleaseMutex();
-
-            if (stopwatches.ContainsKey(threadId) && stopwatches[threadId].Count > 0)
-            {
-                var currentStopwatch = stopwatches[threadId].Pop();
-                currentStopwatch.Stop();
-                stopwatches[threadId].Push(currentStopwatch);
+                    threadInfoResults[threadId] = new ThreadInfoResult
+                    {
+                        ThreadId = threadId,
+                        Time = 0,
+                        Methods = new List<MethodInfoResult>()
+                    };
+                    stopwatches[threadId] = new Stack<Stopwatch>();
+                }
             }
 
             var methodInfo = new MethodInfoResult
@@ -82,17 +75,11 @@ namespace Tracer.Core
                 int time = (int)currentStopwatch.Elapsed.TotalMilliseconds;
 
                 var tmp = threadInfoResults[threadId];
-                tmp.Time += time;
+                if (stopwatches[threadId].Count == 0)
+                    tmp.Time += time;
                 threadInfoResults[threadId] = tmp;
 
                 NoteTimeInMethodInfo(threadId, 0, stopwatches[threadId].Count, threadInfoResults[threadId].Methods, time);
-
-                if (stopwatches[threadId].Count > 0)
-                {
-                    currentStopwatch = stopwatches[threadId].Pop();
-                    currentStopwatch.Start();
-                    stopwatches[threadId].Push(currentStopwatch);
-                }
             }
         }
 

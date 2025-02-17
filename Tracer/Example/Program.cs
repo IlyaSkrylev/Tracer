@@ -14,6 +14,7 @@ namespace Tracer.Example
 {
     class Program
     {
+        private static string pathToDll = @"D:\Works\6 semestr\SPP\Tracer\Tracer\Tracer.Serialization\bin\Debug";
         private static void Main(string[] args)
         {
             ITracer tracer = new Core.Tracer();
@@ -32,7 +33,7 @@ namespace Tracer.Example
             ShowResults(traceResult);
 
 
-            var pluginLoader = new TraceResultSerializer("D:\\Works\\6 semestr\\SPP\\Tracer\\Tracer\\Tracer.Serialization\\bin\\Debug");
+            var pluginLoader = new TraceResultSerializer(pathToDll);
             var serializers = pluginLoader.LoadSerializers();
 
             foreach (var serializer in serializers)
